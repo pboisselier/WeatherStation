@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 #include <map>
-#include <QGraphicsPixmapItem>
+#include <QPixmap>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class WeatherStation; }
@@ -32,6 +32,6 @@ private:
 
 
         /* Not a lot of images, map is faster than unordered_map on small sets*/
-        std::map<Weather, QGraphicsPixmapItem*> _images;
+        std::map<Weather, QPixmap*> _images;
 };
 #endif // WEATHERSTATION_H

@@ -13,13 +13,15 @@ WeatherStation::WeatherStation(QWidget *parent)
         _humidity = 0;
         _lux = 0;
         _pressure = 0;
+        _currentWeather = Weather::Sunny;
 
         // Load images in memory
-        _images = {{Weather::Rainy, new QGraphicsPixmapItem(QPixmap("assets/rainy.png"))},
-                   {Weather::Snowy, new QGraphicsPixmapItem(QPixmap("assets/snowy.png"))}};
-
-        refreshUI();
-
+        _images = {{Weather::Rainy, new QPixmap("assets/rainy.png")},
+                   {Weather::Snowy, new QPixmap("assets/snowy.png")},
+                   {Weather::Sunny, new QPixmap("assets/sunny.png")},
+                   {Weather::Night, new QPixmap("assets/night.png")},
+                   {Weather::SunnyCloud, new QPixmap("assets/sunnycloud.png")},
+                   {Weather::Thunderstorm, new QPixmap("assets/thunderstorm.png")}};
 }
 
 WeatherStation::~WeatherStation()
@@ -33,19 +35,56 @@ WeatherStation::~WeatherStation()
         delete ui;
 }
 
+
+
 void WeatherStation::updateUI(double humidity, double temp, double pressure, double lux)
 {
     _humidity = humidity;
     _temp = temp;
         _pressure = pressure;
         _lux = lux;
+
     // Change current weather
-    if (_lux <= 4)
+        if (_lux < 4)
             _currentWeather = Weather::Night;
-    else
-    {
-    _currentWeather = Weather::Sunny;
-    }
+
+       if (_pressure < 1015)
+       {
+           if (_humidity > 60)
+           {
+               if (_lux > 10 && _lux < 200)
+               {
+                   if (_temp > 5)
+                       _currentWeather = Weather::Rainy;
+               }
+               else if (_lux < 200)
+               {
+                   if (_temp < 5)
+                        _currentWeather = Weather::Snowy;
+               }
+           }
+       }
+       else if (_pressure <= 1015)
+       {
+           if (_humidity < 60)
+           {
+                if (_lux > 10 && _lux < 200)
+                    _currentWeather = Weather::SunnyCloud;
+           }
+           else
+           {
+               if (_lux > 4 && _lux <= 10)
+                   _currentWeather = Weather::Thunderstorm;
+           }
+       }
+       else
+       {
+           if (_humidity < 60)
+               if (_lux >= 200)
+                   _currentWeather = Weather::Sunny;
+       }
+
+    refreshUI();
 }
 
 void WeatherStation::refreshUI()
@@ -57,7 +96,6 @@ void WeatherStation::refreshUI()
     ui->lux_lcd->display(_lux);
 
     // Change image
-    QPixmap pixmap = _images[_currentWeather]->pixmap();
-    ui->weatherView->setPixmap(pixmap);
+    ui->weatherView->setPixmap(*_images[_currentWeather]);
     ui->weatherView->show();
 }
