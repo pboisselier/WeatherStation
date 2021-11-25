@@ -46,7 +46,6 @@ class HumTemp : public BusI2C<humtemp_data>
             HumTemp{device_path, 0x0703, 0x38}
         {
         }
-        /* Delete ? */
         HumTemp (int fd) : BusI2C{fd} {}
 
         void fetch()
