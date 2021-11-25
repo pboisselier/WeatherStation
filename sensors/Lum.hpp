@@ -5,6 +5,13 @@
 #ifndef LUM_HPP
 #define LUM_HPP
 
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <iostream>
+#include <stdint.h>
+#include <thread>
+
 #pragma pack(1)
 struct lum_data
 {

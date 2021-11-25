@@ -13,6 +13,10 @@ SOURCES += \
     weatherstation.cpp
 
 HEADERS += \
+    sensors/BusI2C.hpp \
+    sensors/HumTemp.hpp \
+    sensors/Lum.hpp \
+    sensors/Pressure.hpp \
     weatherstation.h
 
 FORMS += \

@@ -27,21 +27,14 @@ class BusI2C
         class i2c_exception : public std::runtime_error
         {
             public:
-                /* Not the best design to use std::cerr in a library... */
                 i2c_exception (const char* what,
                                const uint16_t bus_addr,
                                const uint16_t sensor_addr,
                                const std::string& device) :
                     std::runtime_error{what},
-                    bus_addr{bus_addr}, sensor_addr{sensor_addr}, device_path{
-                                                                      device}
+                    bus_addr{bus_addr}, sensor_addr{sensor_addr},
+                    device_path{device}, errno_triggered{errno}
                 {
-                        std::cerr << "I2C_EXCEPTION: bus_addr=0x" << std::hex
-                                  << bus_addr << ", sensor_addr=0x" << std::hex
-                                  << sensor_addr << ", dev=" << device
-                                  << std::endl
-                                  << "\terrno: " << std::strerror (errno)
-                                  << std::endl;
                 }
                 i2c_exception (const char* what) : std::runtime_error{what} {}
                 i2c_exception (const char* what, const BusI2C<T>& i2c) :
@@ -53,15 +46,31 @@ class BusI2C
                 {
                 }
 
-                uint16_t bus()
+                void print() const
+                {
+                        std::cerr << "I2C_EXCEPTION: bus_addr=0x" << std::hex
+                                  << bus_addr << ", sensor_addr=0x" << std::hex
+                                  << sensor_addr << ", dev=" << device_path
+                                  << std::endl
+                                  << "\twhat: " << what() << std::endl
+                                  << "\terrno: " << std::strerror (errno)
+                                  << std::endl;
+                }
+
+                int get_errno() const
+                {
+                        return errno_triggered;
+                }
+
+                uint16_t bus() const noexcept
                 {
                         return bus_addr;
                 }
-                uint16_t sensor()
+                uint16_t sensor() const noexcept
                 {
                         return sensor_addr;
                 }
-                const std::string& device()
+                const std::string& device() const noexcept
                 {
                         return device_path;
                 }
@@ -70,6 +79,7 @@ class BusI2C
                 const uint16_t bus_addr;
                 const uint16_t sensor_addr;
                 const std::string device_path;
+                const int errno_triggered;
         };
 
         BusI2C (const std::string dev,
@@ -112,14 +122,13 @@ class BusI2C
                 if (r == -1)
                         throw i2c_exception{"Unable to read from sensor!",
                                             *this};
+#ifndef NDEBUG
                 if ((size_t) r != sz)
                 {
-#ifndef NDEBUG
                         std::cerr << "Read mismatch! Read " << r
                                   << " inside of " << sz << "!" << std::endl;
-#endif
                 }
-
+#endif
                 return buf;
         }
 

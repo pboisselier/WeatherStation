@@ -5,6 +5,13 @@
 #ifndef PRESSURE_HPP
 #define PRESSURE_HPP
 
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <iostream>
+#include <stdint.h>
+#include <thread>
+
 #pragma pack(1)
 struct pressure_data
 {
@@ -32,6 +39,32 @@ class Pressure : public BusI2C<pressure_data>
         {
                 write_data ({0x00});
                 raw = read_data();
+        }
+
+        int pressure() const noexcept
+        {
+                return 0;
+        }
+
+        int temperature() const noexcept
+        {
+                return 0;
+        }
+
+        friend std::ostream& operator<< (std::ostream& stream,
+                                         Pressure const& sensor)
+        {
+                stream << "Fetched data from pressure sensor at " << sensor.dev
+                       << std::endl
+                       << "Pressure (raw): 0x" << std::hex
+                       << sensor.raw.pressure << std::endl
+                       << "Temperature (raw): 0x" << std::hex << sensor.raw.temp
+                       << std::endl
+                       << std::dec << "Pressure: " << sensor.pressure()
+                       << std::endl
+                       << "Temperature: " << sensor.temperature();
+
+                return stream;
         }
 };
 
