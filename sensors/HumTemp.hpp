@@ -5,20 +5,21 @@
 #ifndef HUMTEMP_CPP
 #define HUMTEMP_CPP
 
+#include <byteswap.h>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <stdint.h>
 #include <thread>
-#include <byteswap.h>
 
 #pragma pack(1)
 struct humtemp_data
 {
         uint8_t info : 8;
-        uint32_t humidity : 20;
-        uint32_t temperature : 20;
+        uint8_t data[5];
+        //        uint32_t humidity : 20;
+        //        uint32_t temperature : 20;
         uint8_t reserved : 8;
 };
 
@@ -53,11 +54,17 @@ class HumTemp : public BusI2C<humtemp_data>
         {
                 write_data ({0xAC, 0x33, 0x00});
                 std::this_thread::sleep_for (std::chrono::milliseconds (80));
-                raw = read_data();
+                raw     = read_data();
+                raw_hum = 0x000fffff
+                          & ((raw.data[0] << 12) | (raw.data[1] << 4)
+                             | (raw.data[2] & 0xf0));
+                raw_temp = 0x000fffff
+                           & (((raw.data[2] & 0x0f) << 16) | (raw.data[3] << 8)
+                              | (raw.data[4]));
 
                 //hum = (raw.humtemp & 0x000000fffff00000) >> 20;
-                uint32_t temp = ((raw.temperature & 0x000ff000) >> 12) | ((raw.temperature & 0x00000ff00)) | ((raw.temperature & 0x0000000f));
-                raw.temperature = temp; 
+                //uint32_t temp = ((raw.temperature & 0x000ff000) >> 12) | ((raw.temperature & 0x00000ff00)) | ((raw.temperature & 0x0000000f));
+                //raw.temperature = temp;
                 //uint32_t temp = raw.temperature;
                 //temp &= 0x000fff00;
                 //temp |= ((raw.temperature & 0x0f) << 4) | ((raw.temperature & 0xf0) >>4);
@@ -66,12 +73,12 @@ class HumTemp : public BusI2C<humtemp_data>
 
         double humidity() const noexcept
         {
-                return (((double) raw.humidity) / (1 << 20)) * 100;
+                return (((double) raw_hum) / (1 << 20)) * 100;
         }
 
         double temperature() const noexcept
         {
-                return (((double) (raw.temperature) / (1 << 20)) * 200) - 50;
+                return (((double) (raw_temp) / (1 << 20)) * 200) - 50;
         }
 
         uint8_t info() const noexcept
@@ -86,10 +93,10 @@ class HumTemp : public BusI2C<humtemp_data>
                        << std::endl
                        << "Info: (raw) 0x" << std::hex << (int) sensor.raw.info
                        << std::endl
-                       << "Humidity (raw): 0x" << std::hex
-                       << sensor.raw.humidity << std::endl
-                       << "Temperature (raw): 0x" << std::hex
-                       << sensor.raw.temperature << std::endl
+                       << "Humidity (raw): 0x" << std::hex << sensor.raw_hum
+                       << std::endl
+                       << "Temperature (raw): 0x" << std::hex << sensor.raw_temp
+                       << std::endl
                        << "Reserved (raw): 0x" << std::hex
                        << (int) sensor.raw.reserved << std::endl
                        << std::dec << "Humidity: " << sensor.humidity()
@@ -98,6 +105,10 @@ class HumTemp : public BusI2C<humtemp_data>
 
                 return stream;
         }
+
+    private:
+        uint32_t raw_temp;
+        uint32_t raw_hum;
 };
 
 #endif // HUMTEMP_CPP
