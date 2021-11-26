@@ -123,6 +123,7 @@ class BusI2C
                         throw i2c_exception{"Unable to read from sensor!",
                                             *this};
 #ifndef NDEBUG
+                std::cout << "Read " << r << " bytes, sz=" << sz << std::endl;
                 if ((size_t) r != sz)
                 {
                         std::cerr << "Read mismatch! Read " << r
@@ -134,14 +135,50 @@ class BusI2C
 
         void write_data (const std::list<uint8_t>& data)
         {
-                size_t buf_sz = (data.size()) * sizeof (data);
-                auto buf      = std::unique_ptr<char[]>{new char[buf_sz]};
+                size_t buf_sz = (data.size()) * sizeof (uint8_t);
+                auto buf      = std::unique_ptr<uint8_t[]>{new uint8_t[buf_sz]};
 
                 std::copy (data.begin(), data.end(), buf.get());
 
-                if (write (fd, buf.get(), buf_sz) == -1)
+#ifndef NDEBUG
+                std::cout << "Writing to sensor <";
+                for (int i = 0; i < buf_sz; ++i)
+                        std::cout << "0x" << std::hex << (int) buf.get()[i] << " ";
+                std::cout << ">: sz=" << std::dec << buf_sz << std::endl;
+#endif
+                auto written = write (fd, buf.get(), buf_sz);
+                if (written == -1)
                         throw i2c_exception{"Unable to write to device", *this};
+#ifndef NDEBUG
+                std::cout << "Written " << written << " to sensor at addr 0x"
+                          << std::hex << sensor_addr << std::endl;
+#endif
         }
+
+        //        void write_data (const std::list<uint8_t>& data)
+        //        {
+        //                uint8_t d[2] = {0x70, 0x03};
+        //                write (fd, d, 2*sizeof(char));
+        //                uint8_t d2[2] = {0x81, 0x02};
+        //                write (fd, d2, 2*sizeof(char));
+        //        }
+
+        //        void write_data (const std::list<uint8_t>& data)
+        //        {
+        //                for (auto d : data)
+        //                {
+        //#ifndef NDEBUG
+        //                        std::cout << "Writing to sensor <";
+        //                        std::cout << std::hex << d;
+        //                        std::cout << ">: sz=" << std::dec << sizeof (d)
+        //                                  << std::endl;
+        //#endif
+        //                        auto written = write (fd, &d, sizeof (d));
+        //                        if (written == -1)
+        //                                throw i2c_exception{"Unable to write to device",
+        //                                                    *this};
+        //                }
+        //        }
 
         void fetch()
         {
