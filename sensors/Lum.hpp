@@ -33,7 +33,7 @@ class Lum : public BusI2C<lum_data>
             BusI2C{device, bus_addr, sensor_addr}
         {
                 /* Power up sensor */
-                write_data ({0x70, 0x03});
+                write_data ({0x80, 0x03});
                 /* Set integration time */
                 write_data ({0x81, 0x02});
         }
