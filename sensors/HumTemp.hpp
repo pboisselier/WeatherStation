@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stdint.h>
 #include <thread>
+#include <byteswap.h>
 
 #pragma pack(1)
 struct humtemp_data
@@ -53,16 +54,24 @@ class HumTemp : public BusI2C<humtemp_data>
                 write_data ({0xAC, 0x33, 0x00});
                 std::this_thread::sleep_for (std::chrono::milliseconds (80));
                 raw = read_data();
+
+                //hum = (raw.humtemp & 0x000000fffff00000) >> 20;
+                uint32_t temp = ((raw.temperature & 0x000ff000) >> 12) | ((raw.temperature & 0x00000ff00)) | ((raw.temperature & 0x0000000f));
+                raw.temperature = temp; 
+                //uint32_t temp = raw.temperature;
+                //temp &= 0x000fff00;
+                //temp |= ((raw.temperature & 0x0f) << 4) | ((raw.temperature & 0xf0) >>4);
+                //raw.temperature = temp;
         }
 
         double humidity() const noexcept
         {
-                return (raw.humidity / (1 << 20)) * 100;
+                return (((double) raw.humidity) / (1 << 20)) * 100;
         }
 
         double temperature() const noexcept
         {
-                return (raw.temperature / (1 << 20)) * 200 - 50;
+                return (((double) (raw.temperature) / (1 << 20)) * 200) - 50;
         }
 
         uint8_t info() const noexcept
@@ -75,11 +84,14 @@ class HumTemp : public BusI2C<humtemp_data>
         {
                 stream << "Fetched data from humidity sensor at " << sensor.dev
                        << std::endl
-                       << "Info: " << sensor.raw.info << std::endl
+                       << "Info: (raw) 0x" << std::hex << (int) sensor.raw.info
+                       << std::endl
                        << "Humidity (raw): 0x" << std::hex
                        << sensor.raw.humidity << std::endl
                        << "Temperature (raw): 0x" << std::hex
                        << sensor.raw.temperature << std::endl
+                       << "Reserved (raw): 0x" << std::hex
+                       << (int) sensor.raw.reserved << std::endl
                        << std::dec << "Humidity: " << sensor.humidity()
                        << std::endl
                        << "Temperature: " << sensor.temperature();
