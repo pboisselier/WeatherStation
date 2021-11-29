@@ -142,7 +142,7 @@ class BusI2C
 
 #ifndef NDEBUG
                 std::cout << "Writing to sensor <";
-                for (int i = 0; i < buf_sz; ++i)
+                for (size_t i = 0; i < buf_sz; ++i)
                         std::cout << "0x" << std::hex << (int) buf.get()[i]
                                   << " ";
                 std::cout << ">: sz=" << std::dec << buf_sz << std::endl;

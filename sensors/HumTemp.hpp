@@ -5,7 +5,6 @@
 #ifndef HUMTEMP_CPP
 #define HUMTEMP_CPP
 
-#include <byteswap.h>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
@@ -41,10 +40,6 @@ class HumTemp : public BusI2C<humtemp_data>
 #ifndef NDEBUG
                 std::cout << "HumTemp initialized!" << std::endl;
 #endif
-        }
-        HumTemp (const std::string device_path) :
-            HumTemp{device_path, 0x0703, 0x38}
-        {
         }
         HumTemp (int fd) : BusI2C{fd} {}
 
