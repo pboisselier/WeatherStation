@@ -43,14 +43,5 @@ main (int argc, char* argv[])
                     std::chrono::seconds (refresh_time));
         }
 
-        try
-        {
-                HumTemp hum{"/dev/i2c-1", 0x703, 0x39};
-        }
-        catch (const HumTemp::i2c_exception& e)
-        {
-                e.print();
-        }
-
         return a.exec();
 }

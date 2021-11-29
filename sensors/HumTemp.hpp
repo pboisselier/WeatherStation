@@ -18,8 +18,6 @@ struct humtemp_data
 {
         uint8_t info : 8;
         uint8_t data[5];
-        //        uint32_t humidity : 20;
-        //        uint32_t temperature : 20;
         uint8_t reserved : 8;
 };
 
@@ -61,14 +59,6 @@ class HumTemp : public BusI2C<humtemp_data>
                 raw_temp = 0x000fffff
                            & (((raw.data[2] & 0x0f) << 16) | (raw.data[3] << 8)
                               | (raw.data[4]));
-
-                //hum = (raw.humtemp & 0x000000fffff00000) >> 20;
-                //uint32_t temp = ((raw.temperature & 0x000ff000) >> 12) | ((raw.temperature & 0x00000ff00)) | ((raw.temperature & 0x0000000f));
-                //raw.temperature = temp;
-                //uint32_t temp = raw.temperature;
-                //temp &= 0x000fff00;
-                //temp |= ((raw.temperature & 0x0f) << 4) | ((raw.temperature & 0xf0) >>4);
-                //raw.temperature = temp;
         }
 
         double humidity() const noexcept
