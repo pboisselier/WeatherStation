@@ -1,18 +1,18 @@
 #include "weatherstation.h"
-
 #include "ui_weatherstation.h"
 
-WeatherStation::WeatherStation (QWidget* parent) :
-    QMainWindow (parent), ui (new Ui::WeatherStation)
+WeatherStation::WeatherStation(QWidget *parent)
+        : QMainWindow(parent)
+        , ui(new Ui::WeatherStation)
 {
         // Setup UI
-        ui->setupUi (this);
+        ui->setupUi(this);
 
         // Defaults values
-        _temp           = 0;
-        _humidity       = 0;
-        _lux            = 0;
-        _pressure       = 0;
+        _temp = 0;
+        _humidity = 0;
+        _lux = 0;
+        _pressure = 0;
         _currentWeather = Weather::Sunny;
 
         // Load images in memory
@@ -23,19 +23,22 @@ WeatherStation::WeatherStation (QWidget* parent) :
          * But, as these images are very small and the RaspberryPi this thing will run on is plentiful of RAM
          * we can all load them and make our job easier :)
          */
-        _images = {
-            {Weather::Rainy, new QPixmap ("assets/rainy.png")},
-            {Weather::Snowy, new QPixmap ("assets/snowy.png")},
-            {Weather::Sunny, new QPixmap ("assets/sunny.png")},
-            {Weather::Night, new QPixmap ("assets/night.png")},
-            {Weather::SunnyCloud, new QPixmap ("assets/sunnycloud.png")},
-            {Weather::Thunderstorm, new QPixmap ("assets/thunderstorm.png")}};
+        _images = {{Weather::Rainy, new QPixmap("assets/rainy.png")},
+                   {Weather::Snowy, new QPixmap("assets/snowy.png")},
+                   {Weather::Sunny, new QPixmap("assets/sunny.png")},
+                   {Weather::Night, new QPixmap("assets/night.png")},
+                   {Weather::SunnyCloud, new QPixmap("assets/sunnycloud.png")},
+                   {Weather::Thunderstorm, new QPixmap("assets/thunderstorm.png")}};
+
+        connect (ui->refresh_btn, &QPushButton::pressed, this, &WeatherStation::refreshBtn);
+
+        update();
 }
 
 WeatherStation::~WeatherStation()
 {
         // Delete loaded images
-        for (const auto& i : _images)
+        for (const auto &i : _images)
         {
                 delete i.second;
         }
@@ -43,16 +46,31 @@ WeatherStation::~WeatherStation()
         delete ui;
 }
 
-void
-WeatherStation::updateUI (double humidity,
-                          double temp,
-                          double pressure,
-                          double lux)
+
+void WeatherStation::fetchData()
 {
-        _humidity = humidity;
-        _temp     = temp;
-        _pressure = pressure;
-        _lux      = lux;
+        try {
+                hum_sensor.fetch();
+                _humidity = hum_sensor.humidity();
+                _temp = hum_sensor.temperature();
+        }  catch (HumTemp::i2c_exception& e) {
+            std::cerr << "Error fetching hmtemp sensor" << std::endl;
+            e.print();
+        }
+
+        try {
+                lum_sensor.fetch();
+                _lux = lum_sensor.visible();
+        } catch (Lum::i2c_exception& e) {
+                std::cerr << "Error fetching lum sensor" << std::endl;
+                e.print();
+        }
+
+}
+
+void WeatherStation::update()
+{
+        fetchData();
 
         // Change current weather
         if (_lux < 4)
@@ -94,19 +112,23 @@ WeatherStation::updateUI (double humidity,
                                 _currentWeather = Weather::Sunny;
         }
 
-        refreshUI();
 }
 
-void
-WeatherStation::refreshUI()
+void WeatherStation::refreshUI()
 {
         // Refresh LCD numbers
-        ui->humidity_lcd->display (_humidity);
-        ui->temp_lcd->display (_temp);
-        ui->pressure_lcd->display (_pressure);
-        ui->lux_lcd->display (_lux);
+        ui->humidity_lcd->display(_humidity);
+        ui->temp_lcd->display(_temp);
+        ui->pressure_lcd->display(_pressure);
+        ui->lux_lcd->display(_lux);
 
         // Change image
-        ui->weatherView->setPixmap (*_images[_currentWeather]);
+        ui->weatherView->setPixmap(*_images[_currentWeather]);
         ui->weatherView->show();
+}
+
+void WeatherStation::refreshBtn()
+{
+        update ();
+        refreshUI();
 }

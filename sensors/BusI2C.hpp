@@ -143,7 +143,8 @@ class BusI2C
 #ifndef NDEBUG
                 std::cout << "Writing to sensor <";
                 for (int i = 0; i < buf_sz; ++i)
-                        std::cout << "0x" << std::hex << (int) buf.get()[i] << " ";
+                        std::cout << "0x" << std::hex << (int) buf.get()[i]
+                                  << " ";
                 std::cout << ">: sz=" << std::dec << buf_sz << std::endl;
 #endif
                 auto written = write (fd, buf.get(), buf_sz);
@@ -154,31 +155,6 @@ class BusI2C
                           << std::hex << sensor_addr << std::endl;
 #endif
         }
-
-        //        void write_data (const std::list<uint8_t>& data)
-        //        {
-        //                uint8_t d[2] = {0x70, 0x03};
-        //                write (fd, d, 2*sizeof(char));
-        //                uint8_t d2[2] = {0x81, 0x02};
-        //                write (fd, d2, 2*sizeof(char));
-        //        }
-
-        //        void write_data (const std::list<uint8_t>& data)
-        //        {
-        //                for (auto d : data)
-        //                {
-        //#ifndef NDEBUG
-        //                        std::cout << "Writing to sensor <";
-        //                        std::cout << std::hex << d;
-        //                        std::cout << ">: sz=" << std::dec << sizeof (d)
-        //                                  << std::endl;
-        //#endif
-        //                        auto written = write (fd, &d, sizeof (d));
-        //                        if (written == -1)
-        //                                throw i2c_exception{"Unable to write to device",
-        //                                                    *this};
-        //                }
-        //        }
 
         void fetch()
         {
