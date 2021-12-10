@@ -12,24 +12,21 @@
 #include <stdint.h>
 #include <thread>
 
-#pragma pack(1)
 struct pressure_data
 {
-        uint32_t pressure_raw : 24;
-        uint32_t temp_raw : 24;
+        uint8_t pressure_raw[3]; 
+        uint8_t temp_raw[3];     
 
         uint8_t coef_padding[11];
 
-        int8_t c0_c1[3];
-        int8_t c00_c10[5];
+        uint8_t c0c1[3];   
+        uint8_t c00c10[5]; 
 
-        int16_t c01;
-        int16_t c11;
-        int16_t c20;
-        int16_t c21;
-        int16_t c30;
-
-        uint8_t end_padding[5];
+        uint8_t c01[2]; 
+        uint8_t c11[2]; 
+        uint8_t c20[2]; 
+        uint8_t c21[2]; 
+        uint8_t c30[2]; 
 };
 
 //struct pressure_data
@@ -57,8 +54,8 @@ class Pressure : public BusI2C<pressure_data>
         inline int32_t complement_2s (const int32_t value, const int32_t nbits)
         {
                 int32_t val = value;
-                if (value & (1 << (nbits - 1)))
-                        val = value - (1 << nbits);
+                if (value & ((uint32_t) 1 << (nbits - 1)))
+                        val = (value) - ((uint32_t) 1 << nbits);
                 return val;
         }
 
@@ -67,38 +64,76 @@ class Pressure : public BusI2C<pressure_data>
                 write_data ({0x00});
                 raw = read_data();
 
-                pressure_2s = complement_2s (raw.pressure_raw, 24);
-                temp_2s     = complement_2s (raw.temp_raw, 24);
+                c0 = ((uint16_t) raw.c0c1[0] << 4)
+                     | (((uint16_t) raw.c0c1[1] >> 4) & 0x0F);
 
-                p = (double) pressure_2s / 1040384;
-                t = (double) temp_2s / 1040384;
+                c1 = (((uint16_t) raw.c0c1[1] & 0x0F) << 8) | raw.c0c1[2];
 
-                c0 = (raw.c0_c1[0] << 4) | (raw.c0_c1[1] & 0xF0);
-                c1 = ((raw.c0_c1[1] & 0x0F) << 8) | raw.c0_c1[2];
-                //c0 = c0 - (1 << sizeof c0);
-                //c1 = c1 - (1 << sizeof c1);
+                c00 = ((uint32_t) raw.c00c10[0] << 12)
+                      | ((uint32_t) raw.c00c10[2] << 4)
+                      | (uint32_t)(( raw.c00c10[3] & 0xF0) >> 4);
+
+                c10 = (((uint32_t) raw.c00c10[3] & 0x0F) << 16)
+                      | ((uint32_t) raw.c00c10[4] << 8)
+                      | (uint32_t) raw.c00c10[5];
+
+                c01 = ((uint16_t) raw.c01[0] << 8) | (uint16_t) raw.c01[1];
+                c11 = ((uint16_t) raw.c11[0] << 8) | (uint16_t) raw.c11[1];
+                c20 = ((uint16_t) raw.c20[0] << 8) | (uint16_t) raw.c20[1];
+                c21 = ((uint16_t) raw.c21[0] << 8) | (uint16_t) raw.c21[1];
+                c30 = ((uint16_t) raw.c30[0] << 8) | (uint16_t) raw.c30[1];
+
+                c0  = complement_2s (c0, 12);
+                c1  = complement_2s (c1, 12);
+                c00 = complement_2s (c00, 20);
+                c10 = complement_2s (c10, 20);
+                c01 = complement_2s (c01, 16);
+                c11 = complement_2s (c11, 16);
+                c20 = complement_2s (c20, 16);
+                c21 = complement_2s (c21, 16);
+                c30 = complement_2s (c30, 16);
+
+                int32_t raw_temperature = raw.temp_raw[0] << 16
+                                          | raw.temp_raw[1] << 8
+                                          | raw.temp_raw[2];
+                int32_t raw_pressure = raw.pressure_raw[0] << 16
+                                       | raw.pressure_raw[1] << 8
+                                       | raw.pressure_raw[2];
+
+                raw_temperature = complement_2s (raw_temperature, 24);
+                raw_pressure    = complement_2s (raw_pressure, 24);
+
+                double temp_scaled = (double) raw_temperature / 1040384.0;
+                temp               = c0 * 0.5 + temp_scaled * c1;
+
+                double pressure_scaled = (double) raw_pressure / 1040384.0;
+                press                  = (int32_t) c00
+                        + pressure_scaled
+                              * ((int32_t) c10
+                                 + pressure_scaled
+                                       * ((int32_t) c20
+                                          + pressure_scaled * (int32_t) c30))
+                        + temp_scaled
+                              * ((int32_t) c01
+                                 + pressure_scaled
+                                       * ((int32_t) c11
+                                          + pressure_scaled * (int32_t) c21));
         }
 
-        int pressure() const noexcept
+        double pressure() const noexcept
         {
-                return c00 + p * (c10 + p * (c20 + p * c30))
-                       + t * (c01 + p * (c11 + p * c21));
+                return press;
         }
 
-        int temperature() const noexcept
+        double temperature() const noexcept
         {
-                return 0.5 * c0 + c1 * t;
-                return 0;
+                return temp;
         }
 
         friend std::ostream& operator<< (std::ostream& stream,
                                          Pressure const& sensor)
         {
                 stream << "Fetched data from pressure sensor at " << sensor.dev
-                       << std::endl
-                       << "Pressure (raw): 0x" << std::hex << sensor.pressure_2s
-                       << std::endl
-                       << "Temperature (raw): 0x" << std::hex << sensor.temp_2s
                        << std::endl
                        << std::dec << "Pressure: " << sensor.pressure()
                        << std::endl
@@ -108,12 +143,10 @@ class Pressure : public BusI2C<pressure_data>
         }
 
     private:
-        int32_t pressure_2s;
-        int32_t temp_2s;
-
-        double p;
-        double t;
-        double c0, c1, c00, c10, c20, c30, c01, c11, c21;
+        int32_t c00, c10;
+        int16_t c0, c1, c01, c11, c20, c21, c30;
+        double temp;
+        double press;
 };
 
 #endif // PRESSURE_HPP
